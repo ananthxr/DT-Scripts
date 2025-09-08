@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "WebSearch",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
