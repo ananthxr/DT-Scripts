@@ -519,16 +519,15 @@ public class RTSCameraController : MonoBehaviour
     {
         isTransitioning = true;
         
+        // Get current state (where camera is right now in focus mode)
         Vector3 startPosition = transform.position;
-        Vector3 startOrbitCenter = currentOrbitCenter;
-        float startDistance = currentDistance;
-        float startHorizontalAngle = horizontalAngle;
-        float startVerticalAngle = verticalAngle;
+        Quaternion startRotation = transform.rotation;
         
-        // Calculate target position from original orbital parameters
+        // Calculate target position from original orbital parameters  
         Quaternion originalRotation = Quaternion.Euler(originalVerticalAngle, originalHorizontalAngle, 0f);
         Vector3 originalDirection = originalRotation * Vector3.back;
         Vector3 targetPosition = originalOrbitCenter + originalDirection * originalDistance;
+        Quaternion targetRotation = Quaternion.LookRotation((originalOrbitCenter - targetPosition).normalized);
         
         float elapsed = 0f;
         
@@ -537,17 +536,12 @@ public class RTSCameraController : MonoBehaviour
             elapsed += Time.deltaTime;
             float t = Mathf.SmoothStep(0f, 1f, elapsed / focusTransitionDuration);
             
-            // Smoothly interpolate back to original state
-            currentOrbitCenter = Vector3.Lerp(startOrbitCenter, originalOrbitCenter, t);
-            currentDistance = Mathf.Lerp(startDistance, originalDistance, t);
-            horizontalAngle = Mathf.LerpAngle(startHorizontalAngle, originalHorizontalAngle, t);
-            verticalAngle = Mathf.Lerp(startVerticalAngle, originalVerticalAngle, t);
+            // Smoothly interpolate camera transform directly
+            transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+            transform.rotation = Quaternion.Slerp(startRotation, targetRotation, t);
             
-            // Calculate position using interpolated orbital parameters
-            Quaternion rotation = Quaternion.Euler(verticalAngle, horizontalAngle, 0f);
-            Vector3 direction = rotation * Vector3.back;
-            transform.position = currentOrbitCenter + direction * currentDistance;
-            transform.LookAt(currentOrbitCenter, Vector3.up);
+            // Also interpolate internal values for when transition completes
+            currentOrbitCenter = Vector3.Lerp(currentOrbitCenter, originalOrbitCenter, t);
             
             yield return null;
         }

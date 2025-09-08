@@ -8,7 +8,8 @@
       "WebSearch",
       "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
       "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
-      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)"
+      "Read(/Y:\\Alec DT\\Alec's DT\\Assets\\DT Scripts/**)",
+      "Read(//y/Alec DT/Alec's DT/Builds/Build/**)"
     ],
     "deny": [],
     "ask": []
