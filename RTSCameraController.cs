@@ -58,6 +58,7 @@ public class RTSCameraController : MonoBehaviour
     private float originalDistance;
     private float originalHorizontalAngle;
     private float originalVerticalAngle;
+    private FocusableObject currentFocusedObject;
     
     void Start()
     {
@@ -154,8 +155,8 @@ public class RTSCameraController : MonoBehaviour
             isDragging = false;
         }
         
-        // Right mouse button for panning
-        if (Input.GetMouseButtonDown(1))
+        // Right mouse button for panning (disabled in focus mode)
+        if (Input.GetMouseButtonDown(1) && !isInFocusMode)
         {
             isPanning = true;
             lastMousePosition = Input.mousePosition;
@@ -332,25 +333,18 @@ public class RTSCameraController : MonoBehaviour
         Quaternion startRotation = transform.rotation;
         Vector3 startOrbitCenter = currentOrbitCenter;
         
-        // Get target values directly from cameraOrientationTransform  
-        Vector3 focusPosition = focusableObject.GetFocusPosition();
-        Transform cameraOrientationTransform = focusableObject.GetCameraOrientationTransform();
+        // Get the transform you dragged into the field - camera goes exactly there
+        Transform cameraTargetTransform = focusableObject.GetCameraTargetTransform();
         
-        Vector3 targetCameraPosition;
-        Quaternion targetCameraRotation;
+        if (cameraTargetTransform == null)
+        {
+            Debug.LogWarning("No Camera Target Transform assigned to " + focusableObject.name);
+            isTransitioning = false;
+            yield break;
+        }
         
-        if (cameraOrientationTransform != null)
-        {
-            // Sit camera directly ON the cameraOrientationTransform
-            targetCameraPosition = cameraOrientationTransform.position;
-            targetCameraRotation = cameraOrientationTransform.rotation;
-        }
-        else
-        {
-            // Fallback to calculated position
-            targetCameraPosition = focusableObject.GetCameraPosition();
-            targetCameraRotation = focusableObject.GetCameraRotation();
-        }
+        Vector3 targetCameraPosition = cameraTargetTransform.position;
+        Quaternion targetCameraRotation = cameraTargetTransform.rotation;
         
         float elapsed = 0f;
         
@@ -364,25 +358,30 @@ public class RTSCameraController : MonoBehaviour
             transform.rotation = Quaternion.Slerp(startRotation, targetCameraRotation, t);
             
             // Also interpolate orbit center for when we exit focus
-            currentOrbitCenter = Vector3.Lerp(startOrbitCenter, focusPosition, t);
+            currentOrbitCenter = Vector3.Lerp(startOrbitCenter, focusableObject.GetFocusPosition(), t);
             
             yield return null;
         }
         
-        // Ensure exact final values - camera is at the cameraOrientationTransform
+        // Camera sits exactly at the Focus transform - no movement after this
         transform.position = targetCameraPosition;
         transform.rotation = targetCameraRotation;
-        currentOrbitCenter = focusPosition;
+        
+        // Store the focus transform position for rotation controls
+        currentOrbitCenter = focusableObject.GetFocusPosition();
         targetOrbitCenter = currentOrbitCenter;
         
-        // Calculate orbital parameters from the current position for smooth controls
-        Vector3 directionFromTarget = transform.position - currentOrbitCenter;
-        currentDistance = directionFromTarget.magnitude;
-        targetDistance = currentDistance;
-        horizontalAngle = Mathf.Atan2(directionFromTarget.x, directionFromTarget.z) * Mathf.Rad2Deg;
-        verticalAngle = Mathf.Asin(directionFromTarget.normalized.y) * Mathf.Rad2Deg;
-        this.targetHorizontalAngle = horizontalAngle;
-        this.targetVerticalAngle = verticalAngle;
+        // Initialize rotation from current camera rotation for smooth controls
+        Vector3 eulerAngles = transform.rotation.eulerAngles;
+        horizontalAngle = eulerAngles.y;
+        verticalAngle = eulerAngles.x;
+        // Handle angle wrapping for smooth interpolation
+        if (verticalAngle > 180f) verticalAngle -= 360f;
+        targetHorizontalAngle = horizontalAngle;
+        targetVerticalAngle = verticalAngle;
+        
+        // Store reference to focused object
+        currentFocusedObject = focusableObject;
         
         isInFocusMode = true;
         isTransitioning = false;
@@ -394,25 +393,32 @@ public class RTSCameraController : MonoBehaviour
     
     private void UpdateFocusCameraPosition()
     {
-        // Exactly the same as normal mode - just orbit around the focused object
-        // Smooth rotation angles
-        horizontalAngle = Mathf.LerpAngle(horizontalAngle, targetHorizontalAngle, Time.deltaTime * rotationSmoothness);
-        verticalAngle = Mathf.Lerp(verticalAngle, targetVerticalAngle, Time.deltaTime * rotationSmoothness);
+        if (currentFocusedObject == null) return;
         
-        // Smooth panning (orbit center movement)
-        currentOrbitCenter = Vector3.Lerp(currentOrbitCenter, targetOrbitCenter, Time.deltaTime * panSmoothness);
-        
-        // Smooth zoom
-        currentDistance = Mathf.Lerp(currentDistance, targetDistance, Time.deltaTime * zoomSmoothness);
-        
-        // Calculate position based on angles and distance around focus object
-        Quaternion rotation = Quaternion.Euler(verticalAngle, horizontalAngle, 0f);
-        Vector3 direction = rotation * Vector3.back;
-        Vector3 targetPosition = currentOrbitCenter + direction * currentDistance;
-        
-        // Set position directly and look at focus object
-        transform.position = targetPosition;
-        transform.LookAt(currentOrbitCenter, Vector3.up);
+        // Keep camera at Focus transform position, but allow rotation
+        Transform focusTransform = currentFocusedObject.GetCameraTargetTransform();
+        if (focusTransform != null)
+        {
+            // Camera stays at Focus transform position
+            transform.position = focusTransform.position;
+            
+            // Check if there's a look-at target
+            Transform lookAtTarget = currentFocusedObject.GetLookAtTarget();
+            if (lookAtTarget != null)
+            {
+                // Look at the specified target
+                transform.LookAt(lookAtTarget.position, Vector3.up);
+            }
+            else
+            {
+                // Free rotation with mouse input
+                horizontalAngle = Mathf.LerpAngle(horizontalAngle, targetHorizontalAngle, Time.deltaTime * rotationSmoothness);
+                verticalAngle = Mathf.Lerp(verticalAngle, targetVerticalAngle, Time.deltaTime * rotationSmoothness);
+                
+                // Apply rotation
+                transform.rotation = Quaternion.Euler(verticalAngle, horizontalAngle, 0f);
+            }
+        }
     }
     
     private void FadeNonFocusedObjects(FocusableObject focusedObject)
@@ -558,6 +564,9 @@ public class RTSCameraController : MonoBehaviour
         
         // Restore all objects
         RestoreAllObjects();
+        
+        // Clear focused object reference
+        currentFocusedObject = null;
         
         isInFocusMode = false;
         isTransitioning = false;

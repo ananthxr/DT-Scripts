@@ -52,7 +52,7 @@ public class LuxuryLightingManager : MonoBehaviour
     }
     
     private Camera mainCamera;
-    private CameraFocusManager focusManager;
+    private RTSCameraController cameraController;
     private bool originalLightingStored = false;
     private LightingState originalLighting;
     
@@ -75,7 +75,7 @@ public class LuxuryLightingManager : MonoBehaviour
     private void InitializeLighting()
     {
         mainCamera = Camera.main;
-        focusManager = FindObjectOfType<CameraFocusManager>();
+        cameraController = FindObjectOfType<RTSCameraController>();
         
         CreateLightsIfNeeded();
         SetupKeyLight();
@@ -172,11 +172,8 @@ public class LuxuryLightingManager : MonoBehaviour
 
     private void SetupEventListeners()
     {
-        if (focusManager != null)
-        {
-            // Subscribe to focus events if available
-            // This would need to be implemented in the focus manager
-        }
+        // Event listeners can be added here if needed
+        // The RTSCameraController can call OnObjectFocused/OnFocusExited directly
     }
 
     public void OnObjectFocused(FocusableObject focusedObject)
