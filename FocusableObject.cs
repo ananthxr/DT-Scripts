@@ -102,8 +102,7 @@ public class FocusableObject : MonoBehaviour
             RTSCameraController cameraController = FindObjectOfType<RTSCameraController>();
             if (cameraController != null && !cameraController.IsTransitioning)
             {
-                Vector3 focusPos = GetFocusPosition();
-                cameraController.FocusOnObject(focusPos, focusDistance);
+                cameraController.FocusOnObject(this);
             }
         }
     }
@@ -177,17 +176,16 @@ public class FocusableObject : MonoBehaviour
 
     public Vector3 GetCameraPosition()
     {
+        if (cameraOrientationTransform != null && useCustomOrientation)
+        {
+            // Return the exact position of the cameraOrientationTransform
+            return cameraOrientationTransform.position;
+        }
+        
+        // Fallback to calculated position
         Vector3 focusPos = GetFocusPosition();
         Vector3 angles = GetCameraAngles();
         
-        if (cameraOrientationTransform != null && useCustomOrientation)
-        {
-            // Use the transform's forward direction (Z-axis) to position camera
-            Vector3 transformDirection = -cameraOrientationTransform.forward; // Negative because camera looks towards target
-            return focusPos + transformDirection * focusDistance;
-        }
-        
-        // Calculate position from angles
         float horizontalRad = angles.y * Mathf.Deg2Rad;
         float verticalRad = angles.x * Mathf.Deg2Rad;
         
@@ -198,6 +196,25 @@ public class FocusableObject : MonoBehaviour
         );
         
         return focusPos + calculatedDirection * focusDistance;
+    }
+    
+    public Quaternion GetCameraRotation()
+    {
+        if (cameraOrientationTransform != null && useCustomOrientation)
+        {
+            // Return the exact rotation of the cameraOrientationTransform
+            return cameraOrientationTransform.rotation;
+        }
+        
+        // Fallback to looking at focus position
+        Vector3 focusPos = GetFocusPosition();
+        Vector3 cameraPos = GetCameraPosition();
+        return Quaternion.LookRotation((focusPos - cameraPos).normalized);
+    }
+    
+    public Transform GetCameraOrientationTransform()
+    {
+        return cameraOrientationTransform;
     }
 
     void OnDrawGizmosSelected()
